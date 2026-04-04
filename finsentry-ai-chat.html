@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinSentry AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep:     #060810;
+    --bg-panel:    #0d1117;
+    --bg-card:     #111620;
+    --bg-input:    #161c2a;
+    --bg-hover:    #1a2235;
+    --border:      rgba(99,179,255,0.10);
+    --border-glow: rgba(99,179,255,0.25);
+    --accent:      #3b8bff;
+    --accent2:     #00d4aa;
+    --accent3:     #ff6b6b;
+    --accent-glow: rgba(59,139,255,0.18);
+    --text-1:      #e8eef8;
+    --text-2:      #8b9bbf;
+    --text-3:      #4a5578;
+    --gold:        #f5c842;
+    --success:     #00d4aa;
+    --danger:      #ff5757;
+    --radius:      14px;
+    --radius-lg:   20px;
+    --radius-xl:   28px;
+    --font-head:   'Syne', sans-serif;
+    --font-body:   'DM Sans', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text-1);
+    font-family: var(--font-body);
+    font-size: 15px;
+    overflow: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(59,139,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,139,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridShift 20s linear infinite;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 60% 50% at 20% 0%, rgba(59,139,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 100%, rgba(0,212,170,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  @keyframes gridShift { from { transform: translateY(0); } to { transform: translateY(48px); } }
+
+  .app {
+    position: relative; z-index: 1;
+    display: flex;
+    height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 0;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    animation: slideInLeft 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+  @keyframes slideInLeft { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .sidebar-header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-head);
+    font-size: 20px; font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 0 20px rgba(59,139,255,0.4);
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo span { color: var(--text-1); }
+  .logo em { color: var(--accent); font-style: normal; }
+  .logo-badge {
+    margin-top: 4px;
+    font-size: 10px; font-family: var(--font-body); font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  .sidebar-section {
+    padding: 16px 16px 8px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .quick-topics {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 12px;
+    scrollbar-width: none;
+  }
+  .quick-topics::-webkit-scrollbar { display: none; }
+
+  .topic-btn {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 12px;
+    background: transparent; border: none; cursor: pointer;
+    border-radius: 10px;
+    color: var(--text-2);
+    font-family: var(--font-body); font-size: 13px;
+    text-align: left;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+  }
+  .topic-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-1);
+    transform: translateX(3px);
+  }
+  .topic-btn .icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: rgba(0,212,170,0.07);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 10px;
+    font-size: 12px; color: var(--accent2);
+  }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0,212,170,0.4); }
+    50% { opacity: 0.8; transform: scale(1.1); box-shadow: 0 0 0 5px rgba(0,212,170,0); }
+  }
+
+  /* ─── Main Chat ─── */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  .chat-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(13,17,23,0.8);
+    backdrop-filter: blur(12px);
+  }
+  .chat-title {
+    font-family: var(--font-head); font-size: 18px; font-weight: 700;
+    color: var(--text-1);
+  }
+  .chat-subtitle { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .header-tags { display: flex; gap: 8px; }
+  .tag {
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid;
+  }
+  .tag-blue { background: rgba(59,139,255,0.1); color: var(--accent); border-color: rgba(59,139,255,0.25); }
+  .tag-green { background: rgba(0,212,170,0.08); color: var(--accent2); border-color: rgba(0,212,170,0.2); }
+
+  /* Messages */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-hover) transparent;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
+
+  /* Welcome screen */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    gap: 28px;
+  }
+  .welcome-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, rgba(59,139,255,0.2), rgba(0,212,170,0.15));
+    border: 1px solid var(--border-glow);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    animation: iconFloat 3s ease-in-out infinite;
+    box-shadow: 0 0 40px rgba(59,139,255,0.15);
+  }
+  .welcome-icon svg { width: 32px; height: 32px; }
+  @keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .welcome h2 {
+    font-family: var(--font-head); font-size: 26px; font-weight: 700;
+    background: linear-gradient(135deg, var(--text-1), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .welcome p { color: var(--text-2); font-size: 14px; line-height: 1.7; max-width: 420px; }
+  .suggestion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 560px;
+  }
+  .suggestion-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.22s;
+    font-family: var(--font-body);
+  }
+  .suggestion-card:hover {
+    border-color: var(--border-glow);
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .suggestion-card .s-icon { font-size: 20px; margin-bottom: 8px; }
+  .suggestion-card .s-title { font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 4px; }
+  .suggestion-card .s-desc { font-size: 11px; color: var(--text-3); line-height: 1.5; }
+
+  /* Message bubbles */
+  .msg {
+    display: flex;
+    gap: 12px;
+    animation: msgIn 0.35s cubic-bezier(0.22,1,0.36,1);
+  }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .msg.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; flex-shrink: 0;
+  }
+  .avatar-ai {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 16px rgba(59,139,255,0.3);
+  }
+  .avatar-ai svg { width: 16px; height: 16px; fill: white; }
+  .avatar-user {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white; font-size: 14px;
+  }
+
+  .bubble {
+    max-width: 680px;
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    line-height: 1.65;
+    font-size: 14px;
+    position: relative;
+  }
+  .bubble-ai {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  }
+  .bubble-user {
+    background: linear-gradient(135deg, rgba(59,139,255,0.2), rgba(59,139,255,0.12));
+    border: 1px solid rgba(59,139,255,0.3);
+    color: var(--text-1);
+    border-radius: var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);
+  }
+
+  /* AI response formatting */
+  .bubble-ai h3 {
+    font-family: var(--font-head); font-size: 14px; font-weight: 700;
+    color: var(--accent); margin: 14px 0 6px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .bubble-ai h3:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  .bubble-ai ul { padding-left: 16px; margin: 6px 0; }
+  .bubble-ai li { margin: 4px 0; color: var(--text-2); }
+  .bubble-ai strong { color: var(--text-1); font-weight: 600; }
+  .bubble-ai em { color: var(--accent2); font-style: normal; font-weight: 500; }
+  .bubble-ai p { margin: 6px 0; color: var(--text-2); }
+  .bubble-ai p:first-child { color: var(--text-1); }
+  .bubble-ai code {
+    background: rgba(59,139,255,0.1); border: 1px solid rgba(59,139,255,0.2);
+    border-radius: 5px; padding: 1px 6px; font-size: 12px;
+    color: var(--accent); font-family: 'Courier New', monospace;
+  }
+  .data-card {
+    background: rgba(59,139,255,0.05);
+    border: 1px solid rgba(59,139,255,0.15);
+    border-radius: 10px; padding: 12px 14px; margin: 10px 0;
+  }
+  .data-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--text-3); }
+  .data-val { color: var(--text-1); font-weight: 500; }
+  .data-val.up { color: var(--success); }
+  .data-val.dn { color: var(--danger); }
+  .msg-time { font-size: 10px; color: var(--text-3); margin-top: 6px; padding: 0 4px; }
+
+  /* Typing indicator */
+  .typing-bubble {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+    padding: 14px 18px;
+    display: flex; gap: 5px; align-items: center;
+  }
+  .typing-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    animation: typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; background: var(--accent2); }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; background: var(--accent); opacity: 0.6; }
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 16px 28px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(13,17,23,0.9);
+    backdrop-filter: blur(12px);
+  }
+  .input-bar {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+  .input-bar:focus-within {
+    border-color: rgba(59,139,255,0.4);
+    box-shadow: 0 0 0 3px rgba(59,139,255,0.07);
+  }
+  .chat-input {
+    flex: 1; border: none; background: transparent; outline: none;
+    color: var(--text-1); font-family: var(--font-body); font-size: 14px;
+    resize: none; min-height: 24px; max-height: 120px;
+    line-height: 1.55; padding: 2px 0;
+    scrollbar-width: none;
+  }
+  .chat-input::placeholder { color: var(--text-3); }
+  .send-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #1d6ce8);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(59,139,255,0.35);
+  }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(59,139,255,0.5); }
+  .send-btn:active { transform: scale(0.96); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 16px; height: 16px; fill: white; }
+
+  .input-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 4px 0;
+    font-size: 11px; color: var(--text-3);
+  }
+  .input-hint { display: flex; gap: 12px; }
+  .kbd {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px; font-size: 10px; color: var(--text-3);
+  }
+
+  /* Right panel */
+  .right-panel {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: slideInRight 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+  @keyframes slideInRight { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .panel-section {
+    padding: 20px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-3); margin-bottom: 14px;
+  }
+  .metric {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .metric:last-child { border-bottom: none; }
+  .metric-name { font-size: 12px; color: var(--text-3); }
+  .metric-val { font-size: 13px; font-weight: 600; }
+  .up { color: #00d4aa; } .dn { color: #ff5757; }
+
+  /* Mini sparkline */
+  .sparkline-wrap { margin-top: 14px; }
+  .spark-label { font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
+  .spark-bar-row { display: flex; gap: 3px; align-items: flex-end; height: 36px; }
+  .spark-bar {
+    flex: 1; border-radius: 3px 3px 0 0;
+    background: linear-gradient(to top, rgba(59,139,255,0.8), rgba(59,139,255,0.3));
+    transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .capabilities { padding: 16px 18px; }
+  .cap-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px; color: var(--text-2);
+  }
+  .cap-item:last-child { border-bottom: none; }
+  .cap-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+
+  /* Scrollbar for right panel */
+  .right-panel { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--bg-hover) transparent; }
+
+  @media (max-width: 1100px) { .right-panel { display: none; } }
+  @media (max-width: 768px) { .sidebar { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+        </div>
+        <div>
+          <div>Fin<em>Sentry</em></div>
+          <div class="logo-badge">AI Assistant</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">Quick Topics</div>
+    <div class="quick-topics">
+      <button class="topic-btn" onclick="sendQuick('What is FinSentry and what does it do?')">
+        <div class="icon" style="background:rgba(59,139,255,0.12); color:#3b8bff;">🏦</div>
+        About FinSentry
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Explain market risk and how to manage it')">
+        <div class="icon" style="background:rgba(0,212,170,0.10); color:#00d4aa;">📊</div>
+        Market Risk
+      </button>
+      <button class="topic-btn" onclick="sendQuick('What are the latest stock market trends and key indices today?')">
+        <div class="icon" style="background:rgba(245,200,66,0.10); color:#f5c842;">📈</div>
+        Market Trends
+      </button>
+      <button class="topic-btn" onclick="sendQuick('How does portfolio diversification work and what are best practices?')">
+        <div class="icon" style="background:rgba(168,85,247,0.12); color:#a855f7;">🎯</div>
+        Portfolio Strategy
+      </button>
+      <button class="topic-btn" onclick="sendQuick('What is fraud detection in fintech and how does AI help?')">
+        <div class="icon" style="background:rgba(255,107,107,0.12); color:#ff6b6b;">🛡️</div>
+        Fraud Detection
+      </button>
+      <button class="topic-btn" onclick="sendQuick('What are the key financial regulations I should know about in 2025?')">
+        <div class="icon" style="background:rgba(59,139,255,0.12); color:#3b8bff;">⚖️</div>
+        Regulations
+      </button>
+      <button class="topic-btn" onclick="sendQuick('What is algorithmic trading and how does it work?')">
+        <div class="icon" style="background:rgba(0,212,170,0.10); color:#00d4aa;">🤖</div>
+        Algo Trading
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Explain cryptocurrency market dynamics and DeFi')">
+        <div class="icon" style="background:rgba(245,200,66,0.10); color:#f5c842;">₿</div>
+        Crypto & DeFi
+      </button>
+      <button class="topic-btn" onclick="sendQuick('What are the best risk assessment tools and techniques?')">
+        <div class="icon" style="background:rgba(168,85,247,0.12); color:#a855f7;">🔍</div>
+        Risk Assessment
+      </button>
+      <button class="topic-btn" onclick="sendQuick('How do interest rate changes affect investment portfolios?')">
+        <div class="icon" style="background:rgba(255,107,107,0.12); color:#ff6b6b;">💹</div>
+        Rate Impact
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-pill">
+        <div class="pulse-dot"></div>
+        AI Online · FinSentry Intelligence
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main chat -->
+  <main class="chat-area">
+    <header class="chat-header">
+      <div>
+        <div class="chat-title">FinSentry Intelligence</div>
+        <div class="chat-subtitle">Financial Intelligence Platform</div>
+      </div>
+      <div class="header-tags">
+        <span class="tag tag-blue">Real-time Data</span>
+        <span class="tag tag-green">Web Search</span>
+      </div>
+    </header>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3b8bff" stroke-width="1.5">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" fill="#3b8bff" stroke="none"/>
+          </svg>
+        </div>
+        <h2>Hello, I'm FinSentry AI</h2>
+        <p>Your intelligent financial assistant. Ask me anything about markets, portfolio management, risk analysis, regulations, or financial strategy.</p>
+        <div class="suggestion-grid">
+          <div class="suggestion-card" onclick="sendQuick('What are the current market trends and major index performance this week?')">
+            <div class="s-icon">📈</div>
+            <div class="s-title">Market Overview</div>
+            <div class="s-desc">Get current market trends & index performance</div>
+          </div>
+          <div class="suggestion-card" onclick="sendQuick('How do I build a risk-adjusted investment portfolio?')">
+            <div class="s-icon">🎯</div>
+            <div class="s-title">Portfolio Strategy</div>
+            <div class="s-desc">Build a diversified, risk-adjusted portfolio</div>
+          </div>
+          <div class="suggestion-card" onclick="sendQuick('What is FinSentry platform and its key features for financial monitoring?')">
+            <div class="s-icon">🛡️</div>
+            <div class="s-title">About FinSentry</div>
+            <div class="s-desc">Explore platform features & capabilities</div>
+          </div>
+          <div class="suggestion-card" onclick="sendQuick('Explain the key financial risk types: market, credit, liquidity, and operational risk')">
+            <div class="s-icon">⚠️</div>
+            <div class="s-title">Risk Analysis</div>
+            <div class="s-desc">Understand key financial risk categories</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-bar">
+        <textarea class="chat-input" id="chatInput" placeholder="Ask FinSentry AI anything about markets, finance, risk..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        <div class="input-hint">
+          <span><span class="kbd">Enter</span> to send</span>
+          <span><span class="kbd">Shift+Enter</span> new line</span>
+        </div>
+        <span>FinSentry AI · Financial Intelligence</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right panel -->
+  <aside class="right-panel">
+    <div class="panel-section">
+      <div class="panel-label">Market Snapshot</div>
+      <div class="metric">
+        <span class="metric-name">S&P 500</span>
+        <span class="metric-val up">5,611 ↑</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">NASDAQ</span>
+        <span class="metric-val dn">17,430 ↓</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">DOW Jones</span>
+        <span class="metric-val up">41,938 ↑</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">BTC/USD</span>
+        <span class="metric-val up">$83,420 ↑</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">Gold</span>
+        <span class="metric-val up">$3,115 ↑</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">10Y Treasury</span>
+        <span class="metric-val dn">4.38% ↓</span>
+      </div>
+      <div class="sparkline-wrap">
+        <div class="spark-label">S&P 500 · 7-day trend</div>
+        <div class="spark-bar-row" id="sparkBars"></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">AI Capabilities</div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#3b8bff"></div>
+        Market analysis & live data
+      </div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#00d4aa"></div>
+        Portfolio risk assessment
+      </div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#f5c842"></div>
+        Regulatory compliance
+      </div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#a855f7"></div>
+        Fraud pattern detection
+      </div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#ff6b6b"></div>
+        Investment strategy
+      </div>
+      <div class="cap-item">
+        <div class="cap-dot" style="background:#00d4aa"></div>
+        Financial education
+      </div>
+    </div>
+
+    <div class="capabilities">
+      <div class="panel-label">Session Info</div>
+      <div style="font-size:12px; color:var(--text-3); line-height:1.8;">
+        <div>Model: <span style="color:var(--accent)">FinSentry AI</span></div>
+        <div>Web Search: <span style="color:var(--success)">Enabled</span></div>
+        <div>Messages: <span id="msgCount" style="color:var(--text-2)">0</span></div>
+        <div>Context: <span style="color:var(--text-2)">Financial</span></div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are FinSentry AI, an elite financial intelligence assistant for the FinSentry platform — a cutting-edge fintech solution for financial monitoring, risk management, and investment intelligence.
+
+Your personality: Expert, precise, and insightful. You communicate with clarity and structure. You are up-to-date, analytical, and always provide actionable information.
+
+FinSentry Platform Overview:
+- Real-time financial monitoring and alerts
+- AI-powered risk assessment and fraud detection
+- Portfolio analytics and performance tracking
+- Regulatory compliance tools (SOX, GDPR, AML, KYC)
+- Market intelligence and trading signals
+- Multi-asset coverage: equities, bonds, crypto, commodities, FX
+
+Response Guidelines:
+1. Use STRUCTURED FORMAT with clear sections
+2. Use **bold** for key terms and important numbers
+3. Use bullet points for lists of items
+4. Include relevant data, statistics, and figures when available
+5. For market topics, use web search to get current data
+6. Format responses with clear headings like: ### Section Title
+7. Keep responses comprehensive but scannable
+8. End with a practical takeaway or next step when relevant
+9. Use emojis sparingly for visual structure (📊 📈 ⚠️ ✅ 💡)
+10. Always be accurate — if uncertain, say so clearly
+
+Tone: Professional, knowledgeable, helpful. Like a Goldman Sachs analyst meets a friendly advisor.`;
+
+let messages = [];
+let msgCount = 0;
+
+// Generate sparkline bars
+function buildSparkline() {
+  const data = [62, 58, 71, 65, 80, 74, 88];
+  const container = document.getElementById('sparkBars');
+  const max = Math.max(...data);
+  data.forEach(v => {
+    const bar = document.createElement('div');
+    bar.className = 'spark-bar';
+    bar.style.height = (v / max * 100) + '%';
+    container.appendChild(bar);
+  });
+}
+buildSparkline();
+
+// Auto-resize textarea
+const input = document.getElementById('chatInput');
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function sendQuick(text) {
+  input.value = text;
+  sendMessage();
+}
+
+function getTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function appendUserMsg(text) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const wrap = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `
+    <div class="avatar avatar-user">U</div>
+    <div>
+      <div class="bubble bubble-user">${escHtml(text)}</div>
+      <div class="msg-time" style="text-align:right">${getTime()}</div>
+    </div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping() {
+  const wrap = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg'; div.id = 'typing-indicator';
+  div.innerHTML = `
+    <div class="avatar avatar-ai">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+    </div>
+    <div class="typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatAIResponse(text) {
+  // Convert markdown-like formatting to HTML
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3>$1</h3>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic / accent
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Bullet points
+    .replace(/^[\-\*•] (.+)$/gm, '<li>$1</li>')
+    // Numbered lists
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive li tags
+    .replace(/(<li>.*<\/li>(\n|$))+/gs, m => '<ul>' + m + '</ul>')
+    // Paragraphs
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n(?!<)/g, '<br>');
+
+  // Wrap in paragraph if not already structured
+  if (!html.startsWith('<h') && !html.startsWith('<ul') && !html.startsWith('<p')) {
+    html = '<p>' + html + '</p>';
+  }
+  return html;
+}
+
+function appendAIMsg(text) {
+  const wrap = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `
+    <div class="avatar avatar-ai">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+    </div>
+    <div>
+      <div class="bubble bubble-ai">${formatAIResponse(text)}</div>
+      <div class="msg-time">${getTime()} · FinSentry AI</div>
+    </div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  msgCount++;
+  document.getElementById('msgCount').textContent = msgCount;
+}
+
+const GEMINI_API_KEY = 'AIzaSyBzYnaeKvZYQn4KNMVOLUjIkzqfDw_X9og';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+
+  appendUserMsg(text);
+  messages.push({ role: 'user', parts: [{ text: text }] });
+
+  showTyping();
+
+  try {
+    // Build contents: inject system prompt as first user/model exchange
+    const contents = [
+      { role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\nUser: ' + messages[0].parts[0].text }] },
+      { role: 'model', parts: [{ text: 'Understood. I am FinSentry AI, your elite financial intelligence assistant. I am ready to help with markets, risk, portfolio strategy, regulations, and all financial topics. How can I assist you?' }] },
+      ...messages.slice(1)
+    ];
+
+    const payload = {
+      contents: contents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1500,
+        topP: 0.9
+      }
+    };
+
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const errMsg = data?.error?.message || JSON.stringify(data);
+      throw new Error(errMsg);
+    }
+
+    removeTyping();
+
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) throw new Error('No response received.');
+
+    messages.push({ role: 'model', parts: [{ text: reply }] });
+    appendAIMsg(reply);
+
+  } catch (err) {
+    removeTyping();
+    console.error('FinSentry AI error:', err);
+    appendAIMsg('### ⚠️ Something went wrong\n\nCould not reach FinSentry AI. Please try again.');
+    messages.pop();
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+</script>
+</body>
+</html>
