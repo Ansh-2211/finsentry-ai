@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinSentry · Invoice Report Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#080c10;--bg2:#0d1219;--bg3:#111820;--bg4:#161e28;
+  --border:rgba(99,179,237,0.1);--border2:rgba(99,179,237,0.2);
+  --accent:#63b3ed;--accent-dim:rgba(99,179,237,0.08);
+  --red:#fc8181;--red-bg:rgba(252,129,129,0.08);
+  --green:#68d391;--green-bg:rgba(104,211,145,0.08);
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#4a5568;
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(99,179,237,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,179,237,0.03) 1px,transparent 1px);
+  background-size:40px 40px;}
+header{position:relative;z-index:10;padding:2.5rem 2rem 2rem;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(99,179,237,0.05) 0%,transparent 100%);}
+.hinner{max-width:1100px;margin:0 auto;}
+.htag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;
+  color:var(--accent);background:var(--accent-dim);border:1px solid var(--border2);
+  padding:4px 12px;border-radius:2px;letter-spacing:0.08em;margin-bottom:1rem;}
+.htag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+header h1{font-size:clamp(26px,4vw,42px);font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
+header h1 em{font-style:normal;color:var(--accent);}
+header p{margin-top:0.6rem;font-size:13px;color:var(--text2);max-width:520px;line-height:1.7;font-family:var(--mono);}
+main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 2rem 5rem;}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-bottom:1.5rem;}
+.ph{padding:0.875rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.pt{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
+.pb{padding:1.5rem;}
+.dz{border:1.5px dashed var(--border2);border-radius:3px;padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all 0.2s;}
+.dz:hover,.dz.drag{border-color:var(--accent);background:var(--accent-dim);}
+.dz input{display:none;}
+.dz-icon{width:44px;height:44px;margin:0 auto 1rem;border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;}
+.dz-icon svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.dz-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.dz-sub{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.file-list{display:flex;flex-direction:column;gap:6px;margin-top:1rem;}
+.file-row{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px 12px;}
+.file-row svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:1.5;flex-shrink:0;}
+.fname{flex:1;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fsize{font-family:var(--mono);font-size:11px;color:var(--text3);flex-shrink:0;}
+.fbadge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:2px;flex-shrink:0;letter-spacing:0.05em;}
+.fb-p{background:var(--bg4);color:var(--text3);border:1px solid var(--border);}
+.fb-a{background:rgba(99,179,237,0.1);color:var(--accent);border:1px solid var(--border2);}
+.fb-d{background:var(--green-bg);color:var(--green);border:1px solid rgba(104,211,145,0.2);}
+.fb-e{background:var(--red-bg);color:var(--red);border:1px solid rgba(252,129,129,0.2);}
+.prog-wrap{margin-top:1rem;display:none;}
+.prog-info{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:5px;}
+.prog-track{height:2px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s ease;width:0;}
+.run-btn{margin-top:1.25rem;width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:3px;font-family:var(--font);font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+.run-btn:hover:not(:disabled){background:#90cdf4;}
+.run-btn:disabled{opacity:0.25;cursor:not-allowed;}
+.csv-btn{font-family:var(--mono);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-dim);border:1px solid var(--border2);padding:8px 16px;border-radius:3px;cursor:pointer;transition:all 0.2s;}
+.csv-btn:hover{background:rgba(99,179,237,0.15);}
+#report{display:none;}
+.report-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.report-heading{font-size:20px;font-weight:800;letter-spacing:-0.5px;}
+.report-heading em{font-style:normal;color:var(--accent);}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-bottom:1.5rem;}
+.metric{background:var(--bg2);padding:1.25rem 1.5rem;}
+.mlabel{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.mval{font-size:26px;font-weight:800;letter-spacing:-1px;}
+.mval.red{color:var(--red);}
+.mval.blue{color:var(--accent);}
+.msub{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:3px;}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+.chart-panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1.25rem 1.5rem;}
+.clabel{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:0.75rem;}
+.legend{display:flex;gap:12px;margin-bottom:0.75rem;}
+.leg{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--text2);}
+.leg-dot{width:8px;height:8px;border-radius:2px;}
+.chart-wrap{position:relative;}
+.tl-panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1.25rem 1.5rem;margin-bottom:1rem;}
+.timeline{padding-left:1.5rem;position:relative;}
+.timeline::before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--border);}
+.tl-item{position:relative;padding-bottom:1.25rem;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-dot{position:absolute;left:-21px;top:5px;width:8px;height:8px;border-radius:50%;}
+.tl-dot.high{background:var(--red);box-shadow:0 0 6px rgba(252,129,129,0.5);}
+.tl-dot.low{background:var(--green);box-shadow:0 0 6px rgba(104,211,145,0.4);}
+.tl-date{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.tl-vendor{font-size:13px;font-weight:700;color:var(--text);margin-top:1px;}
+.tl-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;}
+.tl-risk{font-weight:600;}
+.tl-risk.high{color:var(--red);}
+.tl-risk.low{color:var(--green);}
+.cmp-panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1.25rem 1.5rem;margin-bottom:1rem;}
+.cmp-text{font-size:13px;color:var(--text2);line-height:1.85;}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:0.875rem;display:flex;align-items:center;gap:8px;}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;}
+.inv-card{background:var(--bg2);border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+.inv-card.high{border-top:2px solid var(--red);}
+.inv-card.low{border-top:2px solid var(--green);}
+.ic-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.ic-vendor{font-size:14px;font-weight:700;color:var(--text);}
+.ic-num{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.risk-pill{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.05em;padding:4px 9px;border-radius:2px;flex-shrink:0;text-transform:uppercase;}
+.risk-pill.high{background:var(--red-bg);color:var(--red);border:1px solid rgba(252,129,129,0.25);}
+.risk-pill.low{background:var(--green-bg);color:var(--green);border:1px solid rgba(104,211,145,0.25);}
+.ic-body{padding:1rem 1.25rem;}
+.ic-amount{font-size:24px;font-weight:800;color:var(--accent);letter-spacing:-0.5px;margin-bottom:0.75rem;}
+.ic-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:0.75rem;}
+.ic-fl{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;}
+.ic-fv{font-size:12px;font-weight:600;color:var(--text);margin-top:2px;}
+.ic-items{margin-bottom:0.75rem;}
+.ic-item{font-size:12px;color:var(--text2);padding:2px 0;}
+.ic-item::before{content:'· ';color:var(--text3);}
+.ic-risks{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:0.75rem;margin-bottom:0.75rem;}
+.ic-rl{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;}
+.ic-ri{font-size:12px;color:var(--text2);padding:2px 0;display:flex;gap:6px;}
+.ic-ri::before{content:'—';color:var(--text3);flex-shrink:0;}
+.ic-summary{font-size:12px;color:var(--text2);line-height:1.7;padding-top:0.75rem;border-top:1px solid var(--border);}
+@media(max-width:700px){
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .charts-row{grid-template-columns:1fr;}
+  .cards-grid{grid-template-columns:1fr;}
+  header,main{padding-left:1rem;padding-right:1rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hinner">
+    <div class="htag">FinSentry AI &nbsp;·&nbsp; Invoice Report Generator</div>
+    <h1>Invoice <em>Report</em> Generator</h1>
+    <p>Upload multiple invoices → AI extracts all data → full risk report, comparison &amp; CSV export</p>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="ph">
+      <div class="pt">Upload invoices</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);" id="fc">0 / 10</div>
+    </div>
+    <div class="pb">
+      <div class="dz" id="dz" onclick="document.getElementById('fi').click()">
+        <input type="file" id="fi" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="dz-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="dz-title">Drop invoice images here or click to upload</div>
+        <div class="dz-sub">JPG · PNG · WEBP &nbsp;|&nbsp; up to 10 invoices</div>
+      </div>
+      <div class="file-list" id="fl"></div>
+      <div class="prog-wrap" id="pw">
+        <div class="prog-info"><span id="pl">Analyzing...</span><span id="pp">0%</span></div>
+        <div class="prog-track"><div class="prog-fill" id="pf"></div></div>
+      </div>
+      <button class="run-btn" id="runBtn" disabled onclick="runAll()">Generate report</button>
+    </div>
+  </div>
+
+  <div id="report">
+    <div class="report-top">
+      <div class="report-heading">Batch <em>Report</em></div>
+      <button class="csv-btn" onclick="exportCSV()">↓ Export CSV</button>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="charts-row">
+      <div class="chart-panel">
+        <div class="clabel">Amount by invoice</div>
+        <div class="legend" id="barLeg"></div>
+        <div class="chart-wrap" id="barWrap"><canvas id="barC" role="img" aria-label="Invoice amounts"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="clabel">Risk distribution</div>
+        <div class="legend" id="pieLeg"></div>
+        <div class="chart-wrap" style="height:200px;"><canvas id="pieC" role="img" aria-label="Risk split"></canvas></div>
+      </div>
+    </div>
+    <div class="tl-panel">
+      <div class="clabel">Invoice timeline</div>
+      <div class="timeline" id="tl"></div>
+    </div>
+    <div class="sec-lbl" style="margin-bottom:1rem;">AI comparison &amp; analysis</div>
+    <div class="cmp-panel" id="cmpPanel"></div>
+    <div class="sec-lbl" style="margin-top:1.5rem;margin-bottom:1rem;">Invoice summaries</div>
+    <div class="cards-grid" id="cards"></div>
+  </div>
+</main>
+
+<script>
+var AKEY = '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';
+var AURL = 'https://lingering-wildflower-91a6.ansh-chauhan2003-ac.workers.dev';
+var AMDL = 'llama-3.3-70b-versatile';
+var VMDL = 'llama-3.2-11b-vision-preview';
+
+var files = [], results = [], barInst = null, pieInst = null;
+
+document.getElementById('fi').addEventListener('change', function(e){ addFiles(Array.from(e.target.files)); });
+var dz = document.getElementById('dz');
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag'); addFiles(Array.from(e.dataTransfer.files)); });
+
+function addFiles(nf){
+  nf.forEach(function(f){
+    if(files.length>=10) return;
+    if(!files.find(function(x){return x.name===f.name&&x.size===f.size;})) files.push(f);
+  });
+  renderFiles();
+  document.getElementById('runBtn').disabled = files.length===0;
+  document.getElementById('fc').textContent = files.length+' / 10';
+}
+
+function renderFiles(){
+  var fl=document.getElementById('fl'); fl.innerHTML='';
+  files.forEach(function(f,i){
+    var r=results.find(function(r){return r.index===i;});
+    var cls='p',lbl='PENDING';
+    if(r){cls=r._err?'e':'d';lbl=r._err?'ERROR':'DONE';}
+    var d=document.createElement('div'); d.className='file-row';
+    d.innerHTML='<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      +'<span class="fname">'+esc(f.name)+'</span>'
+      +'<span class="fsize">'+Math.round(f.size/1024)+' KB</span>'
+      +'<span class="fbadge fb-'+cls+'" id="b'+i+'">'+lbl+'</span>';
+    fl.appendChild(d);
+  });
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function setBadge(i,cls,lbl){var el=document.getElementById('b'+i);if(el){el.className='fbadge fb-'+cls;el.textContent=lbl;}}
+
+/* Read file as base64 data URL using FileReader */
+function readAsDataURL(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(e){ resolve(e.target.result); };
+    reader.onerror = function(e){ reject(new Error('FileReader failed')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Compress image: load into canvas, resize, output JPEG */
+function compressImage(file){
+  return new Promise(function(resolve, reject){
+    readAsDataURL(file).then(function(dataUrl){
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var MAX = 800;
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if(w===0 || h===0){ resolve(dataUrl); return; }
+          var scale = Math.min(MAX/w, MAX/h, 1);
+          var cw = Math.round(w*scale);
+          var ch = Math.round(h*scale);
+          var canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, cw, ch);
+          var out = canvas.toDataURL('image/jpeg', 0.75);
+          resolve(out);
+        } catch(e){ resolve(dataUrl); }
+      };
+      img.onerror = function(){ resolve(dataUrl); };
+      img.src = dataUrl;
+    }).catch(reject);
+  });
+}
+
+function callAI(model, messages){
+  return fetch(AURL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+AKEY},
+    body:JSON.stringify({model:model,max_tokens:1024,messages:messages})
+  }).then(function(r){
+    if(!r.ok) return r.text().then(function(t){throw new Error('HTTP '+r.status+': '+t);});
+    return r.json();
+  });
+}
+
+async function runAll(){
+  if(!files.length) return;
+  results=[];
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('report').style.display='none';
+  var pw=document.getElementById('pw'),pf=document.getElementById('pf');
+  var pl=document.getElementById('pl'),pp=document.getElementById('pp');
+  pw.style.display='block';
+
+  for(var i=0;i<files.length;i++){
+    setBadge(i,'a','ANALYZING');
+    pl.textContent='Analyzing '+(i+1)+' of '+files.length;
+    pf.style.width=Math.round((i/files.length)*100)+'%';
+    pp.textContent=Math.round((i/files.length)*100)+'%';
+
+    try{
+      var dataUrl = await compressImage(files[i]);
+
+      var prompt='You are a financial analyst. Analyze this invoice image and extract ALL visible information. Return ONLY a raw JSON object — no markdown, no backticks, no explanation whatsoever. Use exactly this structure:\n{"invoice_number":"string or null","vendor":"company name","date":"YYYY-MM-DD or null","due_date":"YYYY-MM-DD or null","amount":number or null,"currency":"string","line_items":["item1","item2"],"payment_terms":"string or null","tax":number or null,"discount":number or null,"risk":"High or Low","risk_reasons":["reason1","reason2"],"summary":"2-3 sentence professional summary of this invoice including risk assessment"}\nRisk is HIGH if: amount over 10000, missing invoice number, vague line items, no due date, inconsistent or suspicious data. Risk is LOW for clean complete invoices under 10000.';
+
+      var data = await callAI(VMDL,[{
+        role:'user',
+        content:[
+          {type:'image_url',image_url:{url:dataUrl}},
+          {type:'text',text:prompt}
+        ]
+      }]);
+
+      if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+      var text=data.choices&&data.choices[0]&&data.choices[0].message?data.choices[0].message.content:'';
+      var clean=text.replace(/```json|```/g,'').trim();
+      /* Extract JSON object from response in case model adds text around it */
+      var match=clean.match(/\{[\s\S]*\}/);
+      if(!match) throw new Error('No JSON in response: '+clean.substring(0,100));
+      var parsed=JSON.parse(match[0]);
+      parsed.index=i; parsed.filename=files[i].name;
+      results.push(parsed);
+      setBadge(i,'d','DONE');
+
+    }catch(e){
+      console.error('Invoice '+i+' error:',e);
+      results.push({index:i,filename:files[i].name,vendor:files[i].name,risk:'Low',amount:null,currency:'USD',line_items:[],risk_reasons:[],summary:'Analysis failed: '+e.message,_err:true});
+      setBadge(i,'e','ERROR');
+    }
+  }
+
+  pf.style.width='100%'; pp.textContent='100%'; pl.textContent='Complete';
+  setTimeout(function(){pw.style.display='none';},800);
+  document.getElementById('runBtn').disabled=false;
+  buildReport();
+  var good=results.filter(function(r){return !r._err;});
+  if(good.length>=1) generateComparison(good);
+}
+
+function fmt(n){
+  if(n===null||n===undefined||n==='') return '—';
+  n=Number(n); if(isNaN(n)) return '—';
+  if(n>=1000000) return '$'+(n/1000000).toFixed(1)+'M';
+  if(n>=1000) return '$'+(n/1000).toFixed(1)+'K';
+  return '$'+Math.round(n).toLocaleString();
+}
+
+function buildReport(){
+  document.getElementById('report').style.display='block';
+  setTimeout(function(){document.getElementById('report').scrollIntoView({behavior:'smooth',block:'start'});},100);
+  var total=results.reduce(function(s,r){return s+(Number(r.amount)||0);},0);
+  var high=results.filter(function(r){return r.risk==='High';}).length;
+  var avg=results.length?total/results.length:0;
+  document.getElementById('metrics').innerHTML=
+    '<div class="metric"><div class="mlabel">Total invoices</div><div class="mval blue">'+results.length+'</div><div class="msub">analyzed</div></div>'+
+    '<div class="metric"><div class="mlabel">Total value</div><div class="mval">'+fmt(total)+'</div><div class="msub">combined</div></div>'+
+    '<div class="metric"><div class="mlabel">High risk</div><div class="mval red">'+high+'</div><div class="msub">of '+results.length+' flagged</div></div>'+
+    '<div class="metric"><div class="mlabel">Avg amount</div><div class="mval">'+fmt(avg)+'</div><div class="msub">per invoice</div></div>';
+  buildBar(); buildPie(high); buildTimeline(); buildCards();
+}
+
+function buildBar(){
+  var wrap=document.getElementById('barWrap');
+  wrap.style.height=Math.max(160,results.length*46+50)+'px';
+  if(barInst){barInst.destroy();barInst=null;}
+  document.getElementById('barLeg').innerHTML=
+    '<div class="leg"><div class="leg-dot" style="background:#68d391"></div>Low risk</div>'+
+    '<div class="leg"><div class="leg-dot" style="background:#fc8181"></div>High risk</div>';
+  barInst=new Chart(document.getElementById('barC'),{
+    type:'bar',
+    data:{labels:results.map(function(r){return r.vendor||r.filename;}),datasets:[{data:results.map(function(r){return r.amount||0;}),backgroundColor:results.map(function(r){return r.risk==='High'?'#fc8181':'#68d391';}),borderRadius:2}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0d1219',titleColor:'#94a3b8',bodyColor:'#e2e8f0',borderColor:'rgba(99,179,237,0.2)',borderWidth:1,callbacks:{label:function(c){return ' $'+c.parsed.x.toLocaleString();}}}},
+      scales:{x:{ticks:{color:'#4a5568',font:{family:'JetBrains Mono',size:10},callback:function(v){return v>=1000?'$'+(v/1000).toFixed(0)+'K':'$'+v;}},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'transparent'}},y:{ticks:{color:'#94a3b8',font:{family:'Syne',size:12,weight:'600'}},grid:{display:false},border:{color:'transparent'}}}}
+  });
+}
+
+function buildPie(high){
+  if(pieInst){pieInst.destroy();pieInst=null;}
+  var low=results.length-high;
+  document.getElementById('pieLeg').innerHTML=
+    '<div class="leg"><div class="leg-dot" style="background:#fc8181"></div>High — '+high+'</div>'+
+    '<div class="leg"><div class="leg-dot" style="background:#68d391"></div>Low — '+low+'</div>';
+  pieInst=new Chart(document.getElementById('pieC'),{
+    type:'doughnut',
+    data:{labels:['High risk','Low risk'],datasets:[{data:[high,low],backgroundColor:['#fc8181','#68d391'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0d1219',titleColor:'#94a3b8',bodyColor:'#e2e8f0',borderColor:'rgba(99,179,237,0.2)',borderWidth:1}},cutout:'65%'}
+  });
+}
+
+function buildTimeline(){
+  var sorted=results.slice().sort(function(a,b){return (a.date?new Date(a.date).getTime():0)-(b.date?new Date(b.date).getTime():0);});
+  document.getElementById('tl').innerHTML=sorted.map(function(r){
+    var rc=r.risk==='High'?'high':'low';
+    return '<div class="tl-item"><div class="tl-dot '+rc+'"></div>'
+      +'<div class="tl-date">'+(r.date||'DATE UNKNOWN')+'</div>'
+      +'<div class="tl-vendor">'+esc(r.vendor||r.filename)+'</div>'
+      +'<div class="tl-meta">'+(r.amount?'$'+Number(r.amount).toLocaleString():'Unknown')+' &nbsp;·&nbsp; <span class="tl-risk '+rc+'">'+(r.risk||'Low')+' risk</span>'+(r.invoice_number?' &nbsp;·&nbsp; #'+esc(String(r.invoice_number)):'')+'</div></div>';
+  }).join('');
+}
+
+async function generateComparison(good){
+  var cmp=document.getElementById('cmpPanel');
+  cmp.innerHTML='<div class="clabel">Generating AI analysis...</div><div style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-top:6px;">Please wait...</div>';
+  var summary=good.map(function(r,i){
+    return 'Invoice '+(i+1)+' ('+r.filename+'):\n  Vendor: '+(r.vendor||'Unknown')+'\n  Amount: '+(r.amount?'$'+r.amount:'unknown')+'\n  Date: '+(r.date||'unknown')+'\n  Due: '+(r.due_date||'unknown')+'\n  Risk: '+r.risk+'\n  Items: '+(r.line_items||[]).join(', ')+'\n  Risk reasons: '+(r.risk_reasons||[]).join(', ')+'\n  Summary: '+r.summary;
+  }).join('\n\n');
+
+  var prompt='You are a senior financial analyst at FinSentry. Analyze these invoice summaries and write a detailed professional report. Include:\n\n**1. Executive Summary** — Overall portfolio health and key findings\n**2. Invoice Comparison** — Compare amounts, vendors, dates and payment terms across invoices\n**3. Risk Analysis** — Break down high vs low risk invoices, explain why each was flagged\n**4. Key Concerns** — Any red flags, anomalies, or patterns to watch\n**5. Recommendations** — Specific actionable recommendations based on findings\n\nBe specific with numbers and vendor names. Write in a professional financial analyst tone.\n\nInvoice data:\n'+summary;
+
+  try{
+    var data=await callAI(AMDL,[{role:'user',content:prompt}]);
+    if(data.error) throw new Error(data.error.message||'API error');
+    var text=data.choices&&data.choices[0]&&data.choices[0].message?data.choices[0].message.content:'';
+    var html=esc(text)
+      .replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text);font-weight:700;display:block;margin-top:1rem;margin-bottom:0.25rem;">$1</strong>')
+      .replace(/\n/g,'<br>');
+    cmp.innerHTML='<div class="clabel">AI analysis &amp; comparison</div><div class="cmp-text" style="margin-top:0.75rem;">'+html+'</div>';
+  }catch(e){
+    cmp.innerHTML='<div class="clabel">Comparison</div><div style="font-size:12px;color:var(--red);margin-top:6px;">Failed to generate comparison: '+esc(e.message)+'</div>';
+  }
+}
+
+function buildCards(){
+  document.getElementById('cards').innerHTML=results.map(function(r){
+    var rc=r.risk==='High'?'high':'low';
+    var items=(r.line_items||[]).map(function(li){return '<div class="ic-item">'+esc(li)+'</div>';}).join('');
+    var reasons=(r.risk_reasons||[]).map(function(rr){return '<div class="ic-ri">'+esc(rr)+'</div>';}).join('');
+    return '<div class="inv-card '+rc+'">'
+      +'<div class="ic-head"><div><div class="ic-vendor">'+esc(r.vendor||r.filename)+'</div>'
+      +'<div class="ic-num">'+(r.invoice_number?'#'+esc(String(r.invoice_number)):'No invoice number')+'</div></div>'
+      +'<div class="risk-pill '+rc+'">'+(r.risk||'Low')+' Risk</div></div>'
+      +'<div class="ic-body">'
+      +'<div class="ic-amount">'+(r.amount?'$'+Number(r.amount).toLocaleString():'—')+'</div>'
+      +'<div class="ic-fields">'
+      +'<div><div class="ic-fl">Date</div><div class="ic-fv">'+(r.date||'—')+'</div></div>'
+      +'<div><div class="ic-fl">Due date</div><div class="ic-fv">'+(r.due_date||'—')+'</div></div>'
+      +'<div><div class="ic-fl">Currency</div><div class="ic-fv">'+(r.currency||'USD')+'</div></div>'
+      +'<div><div class="ic-fl">Tax</div><div class="ic-fv">'+(r.tax?'$'+r.tax:'—')+'</div></div>'
+      +'<div><div class="ic-fl">Discount</div><div class="ic-fv">'+(r.discount?'$'+r.discount:'—')+'</div></div>'
+      +'<div><div class="ic-fl">Payment terms</div><div class="ic-fv">'+(r.payment_terms||'—')+'</div></div>'
+      +'</div>'
+      +(items?'<div class="ic-items">'+items+'</div>':'')
+      +(reasons?'<div class="ic-risks"><div class="ic-rl">Risk factors</div>'+reasons+'</div>':'')
+      +'<div class="ic-summary">'+esc(r.summary||'')+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function exportCSV(){
+  var headers=['Filename','Invoice Number','Vendor','Date','Due Date','Amount','Currency','Tax','Discount','Payment Terms','Line Items','Risk','Risk Reasons','Summary'];
+  var rows=results.map(function(r){
+    return [r.filename||'',r.invoice_number||'',r.vendor||'',r.date||'',r.due_date||'',
+      r.amount||'',r.currency||'USD',r.tax||'',r.discount||'',r.payment_terms||'',
+      (r.line_items||[]).join(' | '),r.risk||'',(r.risk_reasons||[]).join(' | '),(r.summary||'').replace(/"/g,"'")];
+  });
+  var csv=[headers].concat(rows).map(function(row){
+    return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');
+  }).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='finsentry_report.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
